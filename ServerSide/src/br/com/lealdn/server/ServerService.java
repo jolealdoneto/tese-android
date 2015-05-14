@@ -23,55 +23,13 @@ public class ServerService extends NanoHTTPD {
 
 	@Override 
 	public Response serve(IHTTPSession session) {
-		final int length = Integer.valueOf(session.getHeaders().get("content-length"));
-		
-		final byte[] buffer = new byte[(int)length];
-		final DataInputStream dataIs = new DataInputStream(session.getInputStream());
-		try {
-			dataIs.readFully(buffer);
-		} catch (IOException e) {
-			ServerActivity.debug(e.getMessage());
+		final String path = session.getUri();
+		for (final Responses response : Responses.values()) {
+			if (path.equals(response.path)) {
+				return response.handler.handle(session);
+			}
 		}
 		
-		try {
-			final Object result = ExecuteMethod.executeMethod(buffer);
-            if (result != null) {
-    			final ByteArrayOutputStream serialized = ExecuteMethod.serializeResult(result);
-    			
-    			ServerActivity.debug("Ok. Returning");
-            	return new Response(Response.Status.OK, "application/octet-stream", new ByteArrayInputStream(serialized.toByteArray()));
-            }
-            ServerActivity.debug("Ok. VOID.");
-            return new Response(Response.Status.NO_CONTENT, "application/octet-stream", new ByteArrayInputStream(new byte[]{}));
-		} catch (ClassNotFoundException | NoSuchFieldException
-				| SecurityException | IllegalArgumentException
-				| IllegalAccessException | NoSuchMethodException
-				| InvocationTargetException e) {
-			
-			ServerActivity.error("Error: " + e.getMessage());
-			
-			return new Response(Response.Status.INTERNAL_ERROR, "text/plain", e.getMessage());
-		}
-	}
-	private String toString(Map<String, ? extends Object> map) {
-		if (map.size() == 0) {
-			return "";
-		}
-		return unsortedList(map);
-	}
-
-	private String unsortedList(Map<String, ? extends Object> map) {
-		StringBuilder sb = new StringBuilder();
-		sb.append("<ul>");
-		for (Map.Entry entry : map.entrySet()) {
-			listItem(sb, entry);
-		}
-		sb.append("</ul>");
-		return sb.toString();
-	}
-
-	private void listItem(StringBuilder sb, Map.Entry entry) {
-		sb.append("<li><code><b>").append(entry.getKey()).
-		append("</b> = ").append(entry.getValue()).append("</code></li>");
+		return new Response("NoResponse");
 	}
 }

@@ -712,7 +712,7 @@
 /home/neto/prj/android/ClientSide/res/drawable-hdpi/ic_launcher.png \
 /home/neto/prj/android/ClientSide/res/drawable-xhdpi/ic_launcher.png \
 /home/neto/prj/android/ClientSide/res/values-w820dp/dimens.xml \
-/home/neto/prj/android/ClientSide/res/layout/activity_client_main.xml \
+/home/neto/prj/android/ClientSide/res/layout/activity_main.xml \
 /home/neto/prj/android/ClientSide/res/values-v11/styles.xml \
 /home/neto/prj/android/ClientSide/res/drawable-mdpi/ic_launcher.png \
 /home/neto/prj/android/ClientSide/res/values/styles.xml \
@@ -720,6 +720,7 @@
 /home/neto/prj/android/ClientSide/res/values/strings.xml \
 /home/neto/prj/android/ClientSide/res/drawable-xxhdpi/ic_launcher.png \
 /home/neto/prj/android/ClientSide/res/values-v14/styles.xml \
+/home/neto/prj/android/ClientSide/res/menu/main.xml \
 /home/neto/prj/android/ClientSide/res/menu/client_main.xml \
 /home/neto/prj/android/ClientSide/bin/res/drawable-hdpi/ic_launcher.png \
 /home/neto/prj/android/ClientSide/bin/res/drawable-xhdpi/ic_launcher.png \

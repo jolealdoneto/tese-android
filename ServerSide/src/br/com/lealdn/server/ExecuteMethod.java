@@ -20,6 +20,7 @@ public class ExecuteMethod {
     public static Object executeMethod(final byte[] bytes) throws ClassNotFoundException, NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
         final Input input = new Input(bytes);
         final String methodSignature = kryo.readObject(input, String.class);
+		ServerActivity.debug("Method: " + methodSignature);
         final Map<Object, Object> vars = kryo.readObject(input, HashMap.class);
         input.close();
 
@@ -27,12 +28,13 @@ public class ExecuteMethod {
         return invokeMethod(methodSignature, vars);
     }
     
-    public static ByteArrayOutputStream serializeResult(final Object result) {
+    public static ByteArrayOutputStream serializeResult(final Object result, final long startTime) {
     	final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         
         final Output output = new Output(baos, 1024);
         final Map<Object, Object> mapResult = new HashMap<Object, Object>();
         mapResult.put("r", result);
+        mapResult.put("t", System.currentTimeMillis() - startTime);
         kryo.writeObject(output, mapResult);
         output.close();
         
@@ -87,7 +89,7 @@ public class ExecuteMethod {
             final List<Class<?>> argsClassList = new ArrayList<>();
             if (args.length() > 0) {
 	            for (final String argClass : args.split(",")) {
-	                final Class<?> clazz = Class.forName(argClass);
+	                final Class<?> clazz = getClassForName(argClass);
 	                argsClassList.add(clazz);
 	            }
             }
@@ -95,6 +97,27 @@ public class ExecuteMethod {
             return rootClass.getMethod(methodName, argsClassList.toArray(new Class[argsClassList.size()]));
         }
         return null;
+    }
+    
+    private static Class<?> getClassForName(final String name) throws ClassNotFoundException {
+    	switch(name) {
+	    	case "int":
+	    		return int.class;
+	    	case "double":
+	    		return double.class;
+	    	case "long":
+	    		return long.class;
+	    	case "float":
+	    		return float.class;
+	    	case "char":
+	    		return char.class;
+	    	case "byte":
+	    		return byte.class;
+	    	case "short":
+	    		return short.class;
+    		default:
+    			return Class.forName(name);
+    	}
     }
 
     private static Class getClassFromSignature(final String methodSignature) throws ClassNotFoundException {

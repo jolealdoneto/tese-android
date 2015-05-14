@@ -1,0 +1,7 @@
+appcompat_v7/
+gridlayout_v7/
+**/bin
+MyTest/
+NanoHttpd-nanohttpd-ab6feae/
+.metadata/
+.metadata/*
