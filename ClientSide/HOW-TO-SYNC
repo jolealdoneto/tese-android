@@ -1,0 +1,3 @@
+- In ~/prj/android/
+rsync -av -e "ssh -p 6555" --progress ClientSide ServerSide OffloadingFramework neto@lealdn.com.br:/home/neto/tese/android/
+

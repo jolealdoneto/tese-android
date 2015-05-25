@@ -5,6 +5,7 @@ import java.util.Map;
 import br.com.lealdn.offload.ExecutionManager.MethodExecution;
 import br.com.lealdn.offload.OffloadingManager;
 import br.com.lealdn.offload.RTTService;
+import br.com.lealdn.offload.utils.Utils;
 import junit.framework.Test;
 import android.support.v7.app.ActionBarActivity;
 import android.content.Intent;
@@ -32,41 +33,38 @@ public class ClientMain extends ActionBarActivity {
 		button.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
-        		new Thread(new Runnable() {
-        			@Override
-        			public void run() {
-        				final TestingClass tc = new TestingClass();
-        				Log.d("OFFLOADING", "Calling testMe..");
-        				try {
-        					final EditText number = (EditText)findViewById(R.id.editText1);
-        					final int fib = Integer.parseInt(number.getText().toString());
-        					final int res = tc.fibonacciRecusion(fib);
-        					Log.d("OFFLOADING", "RESULT: " + String.valueOf(res));
-        					ClientMain.this.runOnUiThread(new Runnable() {
-        						@Override
-        						public void run() {
-        							final TextView text = (TextView)ClientMain.this.findViewById(R.id.result);
-        							text.setText("Res is: "+ res);	
+				final TestingClass tc = new TestingClass();
+				Log.d("OFFLOADING", "Calling testMe..");
+				try {
+					final EditText number = (EditText)findViewById(R.id.editText1);
+					final int fib = Integer.parseInt(number.getText().toString());
+					final int res = tc.fibonacciRecusion(fib);
+					Log.d("OFFLOADING", "RESULT: " + String.valueOf(res));
+					ClientMain.this.runOnUiThread(new Runnable() {
+						@Override
+						public void run() {
+							final TextView text = (TextView)ClientMain.this.findViewById(R.id.result);
+							text.setText("Res is: "+ res);	
 
-        							Map<String, MethodExecution> executions = OffloadingManager.getExecutionManager().getExecutions();
-        							final MethodExecution me = executions.get("<br.com.lealdn.client.TestingClass: int fibonacciRecusion(java.lang.Integer)>");
-        							if (me != null) {
-                						final EditText etext = (EditText)findViewById(R.id.editText2);
-                						etext.setText(me.localRounds.toString());
-                						final EditText etextRemote = (EditText)findViewById(R.id.editText3);
-                						etextRemote.setText(me.remoteRounds.toString());
-        							}
-        							
-        							final TextView tv1 = (TextView)findViewById(R.id.textView1);
-        							tv1.setText(String.valueOf(OffloadingManager.getLogManager().getLog().iterator().next().shouldOffload));
-        						}
-        					});
-        					
-        				} catch(Exception e) {
-        					Log.e("OFFLOADING", e.getMessage());
-        				}
-        			}
-        		}).start();
+							Map<String, MethodExecution> executions = OffloadingManager.getExecutionManager().getExecutions();
+							final MethodExecution me = executions.get("<br.com.lealdn.client.TestingClass: int fibonacciRecusion(java.lang.Integer)>");
+							if (me != null) {
+								final EditText etext = (EditText)findViewById(R.id.editText2);
+								etext.setText(me.localRounds.toString());
+								final EditText etextRemote = (EditText)findViewById(R.id.editText3);
+								etextRemote.setText(me.remoteRounds.toString());
+							}
+
+							final TextView tv1 = (TextView)findViewById(R.id.textView1);
+							if (OffloadingManager.getLogManager().getLog().iterator().hasNext()) {
+								tv1.setText(String.valueOf(OffloadingManager.getLogManager().getLog().iterator().next().shouldOffload));
+							}
+						}
+					});
+
+				} catch(Exception e) {
+					e.printStackTrace();
+				}
 			}
 		});
 	}

@@ -8,7 +8,7 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import android.util.Log;
 
 public class ConnectionUtils {
-	public final static String ip = "192.168.2.101";
+	public final static String ip = "192.168.2.100";
 
 	public static Long pingServer() {
 		String url = "http://"+ ip +":8080/ping";

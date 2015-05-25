@@ -29,6 +29,7 @@ public class ExecutionManager {
 	private Map<String, MethodExecution> executions;
 	private SharedPreferences preferences;
 	private final String EX_MANAGER_KEY = "executionManagerKey";
+	private final String CPU_USAGE_KEY = "cpuUsageKey";
 	private Gson gson = new Gson();
 	
 	public ExecutionManager(final SharedPreferences preferences) {
@@ -91,7 +92,7 @@ public class ExecutionManager {
 		}
 	}
 	
-	public void updateMethodRuntimeAssessment(final Method method, final boolean local, final long time, final Object[] args) {
+	public void updateMethodRuntimeAssessment(final Method method, final boolean local, final long time, final Object[] args, final long rxTxBytes) {
 		final String signature = getMethodSignature(method);
 		final double assessment = calculateAssessment(method, args);
 		
@@ -99,8 +100,19 @@ public class ExecutionManager {
 		if (executionRounds == null) {
 			executionRounds = new MethodExecution(signature);
 		}
-		executionRounds.addRound(new ExecutionRound(signature, assessment, time, local));
+		
+		executionRounds.addRound(new ExecutionRound(signature, assessment, this.normalizeTimeAccordingToCPULoad(time), local, rxTxBytes));
 		this.executions.put(signature, executionRounds);
+	}
+	
+	public long normalizeTimeAccordingToCPULoad(final long time) {
+		final double cpuUsage = this.getCPUUsage();
+		return Math.round(time*(1-cpuUsage));
+//		if (cpuUsage == 0) {
+//			return time;
+//		}
+//		
+//		return Math.round(time * ((100-cpuUsage)/(double)100));
 	}
 
 	public boolean canInterpolateAssessment(final Method method, final Object[] args, final boolean local) {
@@ -114,17 +126,17 @@ public class ExecutionManager {
 		}
 	}
 	
-	public Double interpolateAssessment(final Method method, final Object[] args, final boolean local) {
+	public Double[] interpolateAssessment(final Method method, final Object[] args, final boolean local) {
 		final double assessment = calculateAssessment(method, args);
 		final MethodExecution execution = this.executions.get(getMethodSignature(method));
 		if (execution != null) {
-			return execution.interpolate(assessment, local);
+			return new Double[] { execution.interpolate(assessment, local), execution.interpolateRxTx(assessment, local) };
 		}
 		else {
 			return null;
 		}
 	}
-	
+
 	private boolean isCompletelyNull(final RelevantParameter[] relevantParameters) {
 		for (RelevantParameter par : relevantParameters) {
 			if (par != null) {
@@ -211,6 +223,8 @@ public class ExecutionManager {
     	public final Set<ExecutionRound> remoteRounds;
     	public PolynomialSplineFunction localSpline;
     	public PolynomialSplineFunction remoteSpline;
+    	public PolynomialSplineFunction localSplineRxTx;
+
     	public Comparator<ExecutionRound> comparator = new Comparator<ExecutionRound>() {
 			@Override
 			public int compare(ExecutionRound lhs, ExecutionRound rhs) {
@@ -226,8 +240,10 @@ public class ExecutionManager {
     	
     	public void addRound(final ExecutionRound round) {
     		if (round.local) {
+    			this.localRounds.remove(round);
     			this.localRounds.add(round);
     		} else {
+    			this.remoteRounds.remove(round);
     			this.remoteRounds.add(round);
     		}
     		updateSpline(round.local);
@@ -247,10 +263,20 @@ public class ExecutionManager {
     		}
     		return null;
     	}
+    	public Double interpolateRxTx(final double assessment, final boolean local) {
+    		if (!local) {
+    			return null;
+    		}
+    		if (localSplineRxTx != null) {
+    			return localSplineRxTx.value(assessment);
+    		}
+    		return null;
+    	}
     	
     	private void updateSpline(boolean local) {
     		if (local) {
     			this.localSpline = getSpline(localRounds);
+    			this.localSplineRxTx = getSplineRxTx(localRounds);
     		}
     		else {
     			this.remoteSpline = getSpline(remoteRounds);
@@ -274,6 +300,24 @@ public class ExecutionManager {
     			return null;
     		}
     	}
+
+    	private PolynomialSplineFunction getSplineRxTx(Set<ExecutionRound> executionRounds) {
+    		if (executionRounds.size() >= 5) {
+	    		final double[] assessments = new double[executionRounds.size()];
+	    		final double[] times = new double[executionRounds.size()];
+	    		int i = 0;
+	    		for (Iterator<ExecutionRound> it = executionRounds.iterator(); it.hasNext();) {
+	    			final ExecutionRound round = it.next();
+	    			assessments[i] = round.assessment;
+	    			times[i] = round.rxTxBytes;
+	    			i++;
+	    		}
+	    		return new AkimaSplineInterpolator().interpolate(assessments, times);
+    		}
+    		else {
+    			return null;
+    		}
+    	}
     }
 
 	class ExecutionRound {
@@ -281,8 +325,7 @@ public class ExecutionManager {
 		public final double assessment;
 		public final long time;
 		public final boolean local;
-		
-		
+		public final long rxTxBytes;
 		
 		@Override
 		public int hashCode() {
@@ -312,11 +355,12 @@ public class ExecutionManager {
 			return true;
 		}
 
-		public ExecutionRound(final String methodSignature, final double assessment, final long time, final boolean local) {
+		public ExecutionRound(final String methodSignature, final double assessment, final long time, final boolean local, final long rxTxBytes) {
 			this.methodSignature = methodSignature;
 			this.assessment = assessment;
 			this.time = time;
 			this.local = local;
+			this.rxTxBytes = rxTxBytes;
 		}
 
 		private ExecutionManager getOuterType() {
@@ -326,5 +370,15 @@ public class ExecutionManager {
 		public String toString() {
 			return this.assessment + " | " + this.time;
 		}
+	}
+	
+	public void updateCPUUsage(final double usage) {
+		final Editor editor = this.preferences.edit();
+		editor.putFloat(CPU_USAGE_KEY, (float)usage);
+		editor.commit();
+	}
+	
+	public double getCPUUsage() {
+		return this.preferences.getFloat(CPU_USAGE_KEY, 0);
 	}
 }

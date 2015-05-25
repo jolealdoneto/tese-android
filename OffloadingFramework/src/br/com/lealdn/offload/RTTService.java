@@ -4,6 +4,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Logger;
 
+import br.com.lealdn.offload.utils.Utils;
+
 import android.app.Activity;
 import android.app.Service;
 import android.content.Context;
@@ -21,7 +23,7 @@ import android.widget.Toast;
 
 public class RTTService extends Service {
 	// constant
-    public static final long NOTIFY_INTERVAL = 10 * 1000; // 10 seconds
+    public static final long NOTIFY_INTERVAL = 10 * 1000;
     public static final String RTT_BAND_TX = "rrt-tx";
     public static final String RTT_BAND_RX = "rrt-rx";
  
@@ -64,7 +66,7 @@ public class RTTService extends Service {
 	private void performPing() {
 		int uid;
 		try {
-			uid = pm.getApplicationInfo("br.com.lealdn.client", 0).uid;
+			uid = pm.getApplicationInfo(OffloadingManager.APPLICATION_NAME, 0).uid;
     		final Long rxBytes = TrafficStats.getUidRxBytes(uid);
     		final Long txBytes = TrafficStats.getUidTxBytes(uid);
     		final Long rtt = ConnectionUtils.pingServer();
@@ -75,8 +77,8 @@ public class RTTService extends Service {
     			editor.putLong("rtt", rtt);
     			editor.commit();
 
-    			OffloadingManager.getBandwidthManager().setBandwidth(RTT_BAND_TX, totalTx / (float)rtt);
-    			OffloadingManager.getBandwidthManager().setBandwidth(RTT_BAND_RX, totalRx / (float)rtt);
+    			OffloadingManager.getBandwidthManager().setUploadBandwidth(totalTx / (float)rtt);
+    			OffloadingManager.getBandwidthManager().setDownloadBandwidth(totalRx / (float)rtt);
     		}
 		} catch (NameNotFoundException e) {
 			// TODO Auto-generated catch block
@@ -94,10 +96,23 @@ public class RTTService extends Service {
 		}
 	}
 
+	private Double leastCPUUsage() {
+		return Utils.getCpuUsage();
+	}
+
 	class PerformRTTCheck extends TimerTask {
 		@Override
 		public void run() {
+			if (!OffloadingManager.shouldRunRTT()) {
+				return;
+			}
+
 			RTTService.this.performPing();
+			final Double leastCPUUsage = RTTService.this.leastCPUUsage();
+			if (leastCPUUsage != null) {
+				OffloadingManager.getExecutionManager().updateCPUUsage(leastCPUUsage);
+			}
+
 			final String timer = "Timer: " + getRTT();
 			// run on another thread
             handler.post(new Runnable() {
